@@ -1,0 +1,314 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        #wrap {
+            width: 400px;
+            height: 600px;
+            margin: 20px auto;
+            position: relative;
+            background: url("images/star.png");
+            overflow: hidden;
+        }
+
+        #myplan {
+            width: 98px;
+            height: 122px;
+            background: url("images/me.png");
+            background-size: 98px 122px;
+            position: absolute;
+            left: 151px;
+            bottom: 0;
+        }
+
+        .bullet {
+            width: 8px;
+            height: 18px;
+            background: url("images/bullet.png");
+            position: absolute;
+        }
+
+        .plain1 {
+            width: 60px;
+            height: 36px;
+            position: absolute;
+            background: url("images/plain1.png");
+        }
+
+        .plain2 {
+            width: 70px;
+            height: 92px;
+            position: absolute;
+            background: url("images/plain2.png");
+        }
+
+        .plain3 {
+            width: 166px;
+            height: 256px;
+            position: absolute;
+            background: url("images/plain3.png");
+        }
+
+        #myscore {
+            height: 50px;
+            width: 100px;
+            background: rgba(110, 110, 50, 0.3);
+            position: absolute;
+            left: 0;
+            top: 0;
+            text-align: center;
+            line-height: 50px;
+            color: white;
+            font-size: 14px;
+            font-weight: 400;
+        }
+
+        #mylife {
+            position: absolute;
+            height: 300px;
+            left: 0;
+            bottom: 0;
+            width: 20px;
+            background: rgba(255, 0, 0, 0.5);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+<body>
+<div id="wrap">
+    <div id="myplan"></div>
+    <div id="myscore">0</div>
+    <div id="mylife"></div>
+</div>
+</body>
+<script>
+    //第二关已进入  需要进行检查  分数
+    var cookie = document.cookie;
+    var cookieScore = cookie.split("=")[1]*1;
+    var myscore = document.getElementById("myscore");
+    myscore.innerHTML = cookieScore;
+
+    var wrap = document.getElementById("wrap");
+    var myplan = document.getElementById("myplan");
+    var mylife = document.getElementById("mylife");
+    myplan.life = 3;
+    var wrapHeight = wrap.offsetHeight;
+    var wrapWidth = wrap.offsetWidth;
+    var myplanHeight = myplan.offsetHeight
+    var myplanWidth = myplan.offsetWidth;//找到飞机场的高度宽度和飞机本身的高度和宽度
+    var wrapLeft = wrap.offsetLeft;//飞机场相对于父元素的距离
+    var wrapTop = wrap.offsetTop;
+    var maxLeft = wrapWidth - myplanWidth;
+    var maxTop = wrapHeight - myplanHeight;
+    var createBulletTimer = null;
+    var createPlainTimer = null;
+    var bulletSpeed = 10;
+    var plainSpeed = 20;
+    var plain3Speed = 10;
+
+    var score = cookieScore;//最开始的分数是0分;
+
+    createPlain();
+    function createPlain() {//表示创造敌机
+        var plain = document.createElement("div");
+        if (score > 1000) {//当分数到达一定的值以后  会产生boss
+            plain.className = "plain3 plain";
+            plain.life = 500;
+            plain.score = 5000;
+            wrap.appendChild(plain);
+            var bossLeft = wrapWidth - plain.offsetWidth;
+            clearTimeout(createPlainTimer);
+            plain.timer = setInterval(function () {//boss的左右移动
+                plain.style.left = plain.offsetLeft + plain3Speed + "px";
+                if (plain.offsetLeft >= bossLeft) {
+                    plain3Speed = -Math.abs(plain3Speed);//当boss到达左边做大的距离的时候 方向反向
+                }
+                if (plain.offsetLeft <= 0) {
+                    plain3Speed = Math.abs(plain3Speed);
+                }
+                var plainLeft = plain.offsetLeft;
+                var plainTop = plain.offsetTop;
+                var minX = myplan.offsetLeft - plain.offsetWidth;
+                var maxX = myplan.offsetLeft + myplan.offsetWidth;
+                var minY = myplan.offsetTop - plain.offsetHeight;
+                var maxY = myplan.offsetTop + myplan.offsetHeight;
+                if (plainLeft >= minX && plainLeft <= maxX && plainTop >= minY && plainTop <= maxY) {
+                    //敌机与我方飞机发生碰撞
+                    plain.life = plain.life - 100;
+                    if (plain.life <= 0) {
+                        clearInterval(plain.timer);
+                        wrap.removeChild(plain);
+                        score = score + plain.score;
+                        if (confirm("已经过关 是否继续下一关")) {
+
+                        } else {
+                            window.close();
+                        }
+                    }
+                    myplan.life = myplan.life - 1;
+                    mylife.style.height = myplan.life * 100 + "px";
+                    if (myplan.life <= 0) {//当生命值没有的时候就销毁
+                        clearInterval(myplan.timer);
+                        wrap.removeChild(myplan);
+                        if (confirm("游戏结束 是否重来一次")) {
+                            window.location.reload();
+                        } else {
+                            window.close();
+                        }
+                    }
+                }
+            }, 200);
+
+        } else {//小敌机的运动情况 照顾我方飞机  只要小的跟我方飞机一碰撞 小敌机就自动消失
+            if (score > 800) {
+                plain.className = "plain2 plain";
+                plain.life =5;
+                plain.score = 10;
+            } else {
+                plain.className = "plain1 plain";
+                plain.life = 1;
+                plain.score = 1;
+            }
+            wrap.appendChild(plain);
+            var maxLeft = wrapWidth - plain.offsetWidth;//最大左边的距离
+            var x = Math.round(Math.random() * maxLeft);//随机产生一个距离（在最大值和最小值之间）
+            plain.style.left = x + "px";
+            //让敌机降落
+            plain.timer = setInterval(function () {
+                plain.style.top = plain.offsetTop + plainSpeed + "px";
+                //在敌机每次移动的是以后 检测跟我方飞机是否发生碰撞
+                var plainLeft = plain.offsetLeft;
+                var plainTop = plain.offsetTop;
+                var minX = myplan.offsetLeft - plain.offsetWidth;
+                var maxX = myplan.offsetLeft + myplan.offsetWidth;
+                var minY = myplan.offsetTop - plain.offsetHeight;
+                var maxY = myplan.offsetTop + myplan.offsetHeight;
+                if (plainLeft >= minX && plainLeft <= maxX && plainTop >= minY && plainTop <= maxY) {
+                    //敌机与我方飞机发生碰撞
+                    clearInterval(plain.timer);
+                    wrap.removeChild(plain);
+                    myplan.life = myplan.life - 1;
+                    mylife.style.height = myplan.life * 100 + "px";
+                    if (myplan.life <= 0) {//当生命值没有的时候就销毁
+                        clearInterval(myplan.timer);
+                        wrap.removeChild(myplan);
+                        if (confirm("游戏结束 是否重来一次")) {
+                            window.location.reload();
+                        } else {
+                            window.close();
+                        }
+                    }
+                }
+                //敌机消失(敌机整机移除出去)
+                if (plain.offsetTop >= wrapHeight) {
+                    clearInterval(plain.timer);
+                    wrap.removeChild(plain);
+                }
+            }, 100);
+            createPlainTimer = setTimeout(createPlain, 500);
+        }
+    }
+    createBullet();
+    function createBullet() {
+        var bullet = document.createElement("div");
+        bullet.className = "bullet";
+        wrap.appendChild(bullet);
+        //重新定位子弹的位置(根据飞机的位置来定义) 飞机距离左边的距离+飞机宽度的一半减去子弹宽度的一半
+        var x = myplan.offsetLeft + (myplanWidth / 2) - bullet.offsetWidth / 2;
+        var y = myplan.offsetTop - bullet.offsetHeight;
+        bullet.style.left = x + "px";
+        bullet.style.top = y + "px";
+        //子弹发射的代码
+        bullet.timer = setInterval(function () {
+            bullet.style.top = bullet.offsetTop - bulletSpeed + "px";
+
+            //这里是子弹的移动  需要在此处检查它是否碰撞到了敌机
+            var bulletX = bullet.offsetLeft;
+            var bulletY = bullet.offsetTop;
+            var plainList = document.getElementsByClassName("plain");//表示所有的敌机
+            for (var i = 0; i < plainList.length; i++) {
+                var plain = plainList[i];//表示一个个的敌机
+                var plainLeft = plain.offsetLeft;
+                var plainTop = plain.offsetTop;
+                var minX = plainLeft - bullet.offsetWidth;
+                var maxX = plainLeft + plain.offsetWidth;
+                var minY = plainTop - bullet.offsetHeight;
+                var maxY = plainTop + plain.offsetHeight;
+                if (bulletX >= minX && bulletX <= maxX && bulletY >= minY && bulletY <= maxY) {//表示发生了碰撞
+                    clearInterval(bullet.timer);
+                    wrap.removeChild(bullet);
+                    plain.life = plain.life - 1;
+                    if (plain.life <= 0) {
+                        clearInterval(plain.timer);
+                        score = score + plain.score;
+                        document.getElementById("myscore").innerHTML = score;
+                        wrap.removeChild(plain);
+                        if(plain.score == 500){//表示boss被消灭
+                            if(confirm("通关是否进行下一轮")){
+                                    window.location.href ="level2.html";
+                            }
+                        }
+                    }
+                    /*
+                     clearInterval(plain.timer);
+                     clearInterval(bullet.timer);
+                     wrap.removeChild(plain);
+                     wrap.removeChild(bullet);
+                     */
+                }
+            }
+
+            //当子弹到达临界条件以后  需要消失(从页面做一个清除)
+            /*
+             if (bullet.offsetTop <= 0) {
+             clearInterval(bullet.timer);//让子弹停止运动
+             wrap.removeChild(bullet);//将子弹从飞机场移除
+             }
+             */
+            if (getStyleAttr(bullet, "top") <= 0) {
+                clearInterval(bullet.timer);//让子弹停止运动
+                wrap.removeChild(bullet);//将子弹从飞机场移除
+            }
+        }, 100);//表示0.1秒 1000毫秒 = 1秒
+        createBulletTimer = setTimeout(createBullet, 200);
+    }
+
+    wrap.onmousemove = function (e) {//当鼠标在该区域移动的时候 触发该function
+        var evt = window.event || e;//事件的兼容
+        evt.stopPropagation();//阻止事件的传递
+        var clientX = evt.clientX;//事件相对于文档的距离
+        var clientY = evt.clientY;
+        var x = clientX - wrapLeft - myplanWidth / 2;
+        var y = clientY - wrapTop - myplanHeight / 2;
+        if (x <= 0) {
+            x = 0;
+        }
+        if (y <= 0) {
+            y = 0;
+        }
+        if (x >= maxLeft) {
+            x = maxLeft;
+        }
+        if (y >= maxTop) {
+            y = maxTop;
+        }
+        myplan.style.left = x + "px";
+        myplan.style.top = y + "px";
+    }
+
+    function getStyleAttr(obj, attr) {
+        if (window.getComputedStyle) {
+            return parseInt(window.getComputedStyle(obj)[attr]);
+        } else {
+            return parseInt(obj.currentStyle[attr]);
+        }
+    }
+</script>
+</html>
